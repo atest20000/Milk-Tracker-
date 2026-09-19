@@ -33,30 +33,6 @@
         }
         h2, h3 { text-align: center; color: var(--primary-color); margin-top: 0; }
         
-        .rate-badge {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #e0e7ff;
-            color: var(--primary-color);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            font-size: 15px;
-        }
-        .rate-badge input {
-            width: 70px;
-            padding: 4px 6px;
-            text-align: center;
-            font-size: 15px;
-            font-weight: bold;
-            border: 1px solid #c7d2fe;
-            border-radius: 4px;
-            background: white;
-            color: var(--primary-color);
-        }
-
         .top-summary-box {
             background: #f0fdf4;
             border: 2px solid #bbf7d0;
@@ -181,12 +157,6 @@
         Total to Pay: ₹0.00
     </div>
 
-    <!-- Editable Rate Badge -->
-    <div class="rate-badge">
-        <span>Default Rate (₹/Liter):</span>
-        <input type="number" id="globalRate" value="48" step="0.5" min="1" onchange="updateRate()">
-    </div>
-
     <div>
         <h3>Add or Update Entry</h3>
         <div class="form-group">
@@ -203,6 +173,12 @@
                 <button type="button" class="btn-qty" id="btn-2" onclick="setQuantity(2)">2 Liters</button>
             </div>
             <input type="number" id="customQty" step="0.1" placeholder="Or custom liters..." oninput="clearActiveButtons()">
+        </div>
+
+        <!-- Default Rate Box Before Save -->
+        <div class="form-group">
+            <label for="entryRate">Rate (₹/Liter):</label>
+            <input type="number" id="entryRate" step="0.5" min="1">
         </div>
 
         <button class="btn-primary" onclick="saveEntry()">Save Entry</button>
@@ -245,16 +221,26 @@
 </div>
 
 <script>
-    let currentRate = parseFloat(localStorage.getItem('milk_rate')) || 48;
-    document.getElementById('globalRate').value = currentRate;
+    let persistentRate = parseFloat(localStorage.getItem('milk_rate')) || 48;
+    document.getElementById('entryRate').value = persistentRate;
 
     const DEFAULT_QTY = 1.5;
     let selectedQty = 1.5;
 
+    // Helper function to format YYYY-MM-DD to DD-MM-YYYY
+    function formatDateDDMMYYYY(dateStr) {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return dateStr;
+    }
+
     window.onload = function() {
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
-        document.getElementById('entryDate').value = todayStr;
+        document.getElementById('entryDate').value = todayStr; // Always default entry selector to today's date
         
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
         const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
@@ -266,21 +252,6 @@
         checkDateEntry();
         loadReport();
     };
-
-    function updateRate() {
-        const val = parseFloat(document.getElementById('globalRate').value);
-        if (!isNaN(val) && val > 0) {
-            currentRate = val;
-            localStorage.setItem('milk_rate', currentRate);
-            
-            let entries = getEntries();
-            entries.forEach(e => {
-                e.total = e.qty * currentRate;
-            });
-            localStorage.setItem('milk_entries', JSON.stringify(entries));
-            loadReport();
-        }
-    }
 
     function autoPopulateMonth(year, month) {
         let entries = getEntries();
@@ -295,7 +266,7 @@
 
             const exists = entries.some(e => e.date === dateStr);
             if (!exists) {
-                entries.push({ date: dateStr, qty: DEFAULT_QTY, total: DEFAULT_QTY * currentRate });
+                entries.push({ date: dateStr, qty: DEFAULT_QTY, rate: persistentRate, total: DEFAULT_QTY * persistentRate });
                 added = true;
             }
         }
@@ -329,8 +300,10 @@
         const found = entries.find(e => e.date === date);
         if (found !== undefined) {
             setQuantity(found.qty);
+            document.getElementById('entryRate').value = found.rate !== undefined ? found.rate : persistentRate;
         } else {
             setQuantity(1.5);
+            document.getElementById('entryRate').value = persistentRate;
         }
     }
 
@@ -338,37 +311,46 @@
         const date = document.getElementById('entryDate').value;
         const customInput = parseFloat(document.getElementById('customQty').value);
         const qty = (selectedQty !== null && !isNaN(selectedQty)) ? selectedQty : customInput;
-
+        const rateInput = parseFloat(document.getElementById('entryRate').value);
+        
         if (!date) { alert('Please select a date.'); return; }
         if (isNaN(qty) || qty < 0) { alert('Please enter a valid quantity.'); return; }
+        if (isNaN(rateInput) || rateInput <= 0) { alert('Please enter a valid rate.'); return; }
+
+        // Update persistent default rate to whatever was manually typed/saved
+        persistentRate = rateInput;
+        localStorage.setItem('milk_rate', persistentRate);
 
         let entries = getEntries();
         const existingIndex = entries.findIndex(e => e.date === date);
         
         if (existingIndex >= 0) {
             entries[existingIndex].qty = qty;
-            entries[existingIndex].total = qty * currentRate;
+            entries[existingIndex].rate = persistentRate;
+            entries[existingIndex].total = qty * persistentRate;
         } else {
-            entries.push({ date: date, qty: qty, total: qty * currentRate });
+            entries.push({ date: date, qty: qty, rate: persistentRate, total: qty * persistentRate });
         }
 
         entries.sort((a, b) => new Date(a.date) - new Date(b.date));
         localStorage.setItem('milk_entries', JSON.stringify(entries));
         loadReport();
         
+        // Reset entry date back to today's date after saving
         const todayStr = new Date().toISOString().split('T')[0];
         document.getElementById('entryDate').value = todayStr;
         checkDateEntry();
     }
 
-    function editEntry(date, qty) {
+    function editEntry(date, qty, rate) {
         document.getElementById('entryDate').value = date;
         setQuantity(qty);
+        document.getElementById('entryRate').value = rate !== undefined ? rate : persistentRate;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function deleteEntry(date) {
-        if (confirm('Delete entry for ' + date + '?')) {
+        if (confirm('Delete entry for ' + formatDateDDMMYYYY(date) + '?')) {
             let entries = getEntries().filter(e => e.date !== date);
             localStorage.setItem('milk_entries', JSON.stringify(entries));
             checkDateEntry();
@@ -396,12 +378,13 @@
             html += `<tr><td colspan="4">No entries found for this range.</td></tr>`;
         } else {
             filtered.forEach(e => {
+                const rVal = e.rate !== undefined ? e.rate : persistentRate;
                 html += `<tr>
-                    <td>${e.date}</td>
+                    <td>${formatDateDDMMYYYY(e.date)}</td>
                     <td>${e.qty}L</td>
                     <td>₹${e.total.toFixed(2)}</td>
                     <td>
-                        <button class="action-btn edit-btn" onclick="editEntry('${e.date}', ${e.qty})">Edit</button>
+                        <button class="action-btn edit-btn" onclick="editEntry('${e.date}', ${e.qty}, ${rVal})">Edit</button>
                         <button class="action-btn delete-btn" onclick="deleteEntry('${e.date}')">X</button>
                     </td>
                 </tr>`;
@@ -457,7 +440,7 @@
             totLiters += parseFloat(e.qty);
             totAmount += parseFloat(e.total);
             return [
-                e.date,
+                formatDateDDMMYYYY(e.date),
                 e.qty + ' L',
                 'Rs. ' + parseFloat(e.total).toFixed(2)
             ];
@@ -472,7 +455,7 @@
 
         doc.setFontSize(10);
         doc.setTextColor(107, 114, 128);
-        doc.text(`Period: ${startDate || 'Beginning'} to ${endDate || 'Present'} (Rate: ₹${currentRate}/L)`, 14, 26);
+        doc.text(`Period: ${formatDateDDMMYYYY(startDate) || 'Beginning'} to ${formatDateDDMMYYYY(endDate) || 'Present'}`, 14, 26);
 
         doc.autoTable({
             startY: 32,
@@ -500,4 +483,5 @@
 </script>
 
 </body>
-</html>
+    </html>
+    

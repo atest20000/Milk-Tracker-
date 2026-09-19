@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Milk Delivery Tracker</title>
     
     <!-- Direct Vector PDF Generation Libraries -->
@@ -30,9 +30,29 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
         h2, h3 { text-align: center; color: var(--primary-color); margin-top: 0; }
         
+        #notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background-color: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease-in-out;
+            z-index: 2000;
+            text-align: center;
+        }
+        #notification.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
         .top-summary-box {
             background: #f0fdf4;
             border: 2px solid #bbf7d0;
@@ -85,9 +105,7 @@
         }
         hr { border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0; }
         
-        .table-container {
-            overflow-x: auto;
-        }
+        .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
         th, td { border: 1px solid #d1d5db; padding: 10px 8px; text-align: center; }
         th { background-color: var(--primary-color); color: white; }
@@ -148,10 +166,11 @@
 </head>
 <body>
 
+<div id="notification">Entry saved successfully!</div>
+
 <div class="container">
     <h2>🥛 Milk Delivery Tracker</h2>
     
-    <!-- Top Summary Card -->
     <div id="topSummaryContainer" class="top-summary-box">
         Total Milk: 0.0 Liters<br>
         Total to Pay: ₹0.00
@@ -175,7 +194,6 @@
             <input type="number" id="customQty" step="0.1" placeholder="Or custom liters..." oninput="clearActiveButtons()">
         </div>
 
-        <!-- Default Rate Box Before Save -->
         <div class="form-group">
             <label for="entryRate">Rate (₹/Liter):</label>
             <input type="number" id="entryRate" step="0.5" min="1">
@@ -199,7 +217,7 @@
 
     <div class="table-container" id="tableContainer"></div>
 
-    <button class="btn-primary btn-pdf-action" onclick="openExportModal()">Export PDF</button>
+    <button class="btn-primary btn-pdf-action" onclick="openExportModal()">Download PDF Report</button>
 </div>
 
 <!-- RANGE SELECTION MODAL POPUP -->
@@ -214,20 +232,40 @@
             <label style="font-size:13px; margin-bottom:4px;">Custom Date Range:</label>
             <input type="date" id="modalStartDate" style="margin-bottom:8px; padding:8px; font-size:14px; width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px;">
             <input type="date" id="modalEndDate" style="margin-bottom:10px; padding:8px; font-size:14px; width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px;">
-            <button class="modal-btn modal-btn-primary" onclick="generatePdf('custom')">Export Custom Range</button>
+            <button class="modal-btn modal-btn-primary" onclick="generatePdf('custom')">Download Custom PDF</button>
         </div>
         <button class="modal-btn modal-btn-cancel" onclick="closeExportModal()">Cancel</button>
     </div>
 </div>
 
 <script>
-    let persistentRate = parseFloat(localStorage.getItem('milk_rate')) || 48;
-    document.getElementById('entryRate').value = persistentRate;
+    // Robust memory fallback ensuring app never crashes on restricted browser contexts
+    let memoryStorage = { milk_rate: 48, milk_entries: [] };
 
+    function safeGetItem(key) {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            return memoryStorage[key] ? JSON.stringify(memoryStorage[key]) : null;
+        }
+    }
+
+    function safeSetItem(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            try {
+                memoryStorage[key] = JSON.parse(value);
+            } catch (err) {
+                memoryStorage[key] = value;
+            }
+        }
+    }
+
+    let persistentRate = parseFloat(safeGetItem('milk_rate')) || 48;
     const DEFAULT_QTY = 1.5;
     let selectedQty = 1.5;
 
-    // Helper function to format YYYY-MM-DD to DD-MM-YYYY
     function formatDateDDMMYYYY(dateStr) {
         if (!dateStr) return '';
         const parts = dateStr.split('-');
@@ -237,21 +275,59 @@
         return dateStr;
     }
 
-    window.onload = function() {
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-        document.getElementById('entryDate').value = todayStr; // Always default entry selector to today's date
-        
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-        
-        document.getElementById('startDate').value = firstDay;
-        document.getElementById('endDate').value = lastDay;
+    function getLocalDateString(dateObj) {
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 
-        autoPopulateMonth(today.getFullYear(), today.getMonth());
-        checkDateEntry();
-        loadReport();
-    };
+    function showNotification(message) {
+        const notif = document.getElementById('notification');
+        if (!notif) return;
+        notif.innerText = message;
+        notif.classList.add('show');
+        setTimeout(() => { notif.classList.remove('show'); }, 2500);
+    }
+
+    function getEntries() {
+        let raw = safeGetItem('milk_entries');
+        if (!raw) return [];
+        try {
+            let parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            safeSetItem('milk_entries', JSON.stringify([]));
+            return [];
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        try {
+            const rateInputEl = document.getElementById('entryRate');
+            if (rateInputEl) rateInputEl.value = persistentRate;
+
+            const today = new Date();
+            const todayStr = getLocalDateString(today);
+            
+            const entryDateEl = document.getElementById('entryDate');
+            if (entryDateEl) entryDateEl.value = todayStr;
+            
+            const firstDay = getLocalDateString(new Date(today.getFullYear(), today.getMonth(), 1));
+            const lastDay = getLocalDateString(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+            
+            const startDateEl = document.getElementById('startDate');
+            const endDateEl = document.getElementById('endDate');
+            if (startDateEl) startDateEl.value = firstDay;
+            if (endDateEl) endDateEl.value = lastDay;
+
+            autoPopulateMonth(today.getFullYear(), today.getMonth());
+            checkDateEntry();
+            loadReport();
+        } catch (err) {
+            console.error("Initialization error:", err);
+        }
+    });
 
     function autoPopulateMonth(year, month) {
         let entries = getEntries();
@@ -272,13 +348,14 @@
         }
         if (added) {
             entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-            localStorage.setItem('milk_entries', JSON.stringify(entries));
+            safeSetItem('milk_entries', JSON.stringify(entries));
         }
     }
 
     function setQuantity(qty) {
         selectedQty = qty;
-        document.getElementById('customQty').value = qty;
+        const customQtyEl = document.getElementById('customQty');
+        if (customQtyEl) customQtyEl.value = qty;
         document.querySelectorAll('.btn-qty').forEach(btn => btn.classList.remove('active'));
         const targetBtn = document.getElementById('btn-' + qty);
         if (targetBtn) targetBtn.classList.add('active');
@@ -289,37 +366,41 @@
         document.querySelectorAll('.btn-qty').forEach(btn => btn.classList.remove('active'));
     }
 
-    function getEntries() {
-        let entries = localStorage.getItem('milk_entries');
-        return entries ? JSON.parse(entries) : [];
-    }
-
     function checkDateEntry() {
-        const date = document.getElementById('entryDate').value;
+        const entryDateEl = document.getElementById('entryDate');
+        if (!entryDateEl) return;
+        const date = entryDateEl.value;
         const entries = getEntries();
         const found = entries.find(e => e.date === date);
+        const rateInputEl = document.getElementById('entryRate');
+        
         if (found !== undefined) {
             setQuantity(found.qty);
-            document.getElementById('entryRate').value = found.rate !== undefined ? found.rate : persistentRate;
+            if (rateInputEl) rateInputEl.value = found.rate !== undefined ? found.rate : persistentRate;
         } else {
             setQuantity(1.5);
-            document.getElementById('entryRate').value = persistentRate;
+            if (rateInputEl) rateInputEl.value = persistentRate;
         }
     }
 
     function saveEntry() {
-        const date = document.getElementById('entryDate').value;
-        const customInput = parseFloat(document.getElementById('customQty').value);
+        const entryDateEl = document.getElementById('entryDate');
+        const customQtyEl = document.getElementById('customQty');
+        const rateInputEl = document.getElementById('entryRate');
+        
+        if (!entryDateEl || !customQtyEl || !rateInputEl) return;
+
+        const date = entryDateEl.value;
+        const customInput = parseFloat(customQtyEl.value);
         const qty = (selectedQty !== null && !isNaN(selectedQty)) ? selectedQty : customInput;
-        const rateInput = parseFloat(document.getElementById('entryRate').value);
+        const rateInput = parseFloat(rateInputEl.value);
         
         if (!date) { alert('Please select a date.'); return; }
         if (isNaN(qty) || qty < 0) { alert('Please enter a valid quantity.'); return; }
         if (isNaN(rateInput) || rateInput <= 0) { alert('Please enter a valid rate.'); return; }
 
-        // Update persistent default rate to whatever was manually typed/saved
         persistentRate = rateInput;
-        localStorage.setItem('milk_rate', persistentRate);
+        safeSetItem('milk_rate', persistentRate);
 
         let entries = getEntries();
         const existingIndex = entries.findIndex(e => e.date === date);
@@ -328,42 +409,56 @@
             entries[existingIndex].qty = qty;
             entries[existingIndex].rate = persistentRate;
             entries[existingIndex].total = qty * persistentRate;
+            showNotification('Entry updated successfully for ' + formatDateDDMMYYYY(date) + '!');
         } else {
             entries.push({ date: date, qty: qty, rate: persistentRate, total: qty * persistentRate });
+            showNotification('Entry saved successfully for ' + formatDateDDMMYYYY(date) + '!');
         }
 
         entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-        localStorage.setItem('milk_entries', JSON.stringify(entries));
+        safeSetItem('milk_entries', JSON.stringify(entries));
         loadReport();
         
-        // Reset entry date back to today's date after saving
-        const todayStr = new Date().toISOString().split('T')[0];
-        document.getElementById('entryDate').value = todayStr;
+        entryDateEl.value = getLocalDateString(new Date());
         checkDateEntry();
     }
 
     function editEntry(date, qty, rate) {
-        document.getElementById('entryDate').value = date;
+        const entryDateEl = document.getElementById('entryDate');
+        const rateInputEl = document.getElementById('entryRate');
+        if (entryDateEl) entryDateEl.value = date;
         setQuantity(qty);
-        document.getElementById('entryRate').value = rate !== undefined ? rate : persistentRate;
+        if (rateInputEl) rateInputEl.value = rate !== undefined ? rate : persistentRate;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function deleteEntry(date) {
         if (confirm('Delete entry for ' + formatDateDDMMYYYY(date) + '?')) {
             let entries = getEntries().filter(e => e.date !== date);
-            localStorage.setItem('milk_entries', JSON.stringify(entries));
+            safeSetItem('milk_entries', JSON.stringify(entries));
             checkDateEntry();
             loadReport();
+            showNotification('Entry deleted successfully.');
         }
     }
 
     function loadReport() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const entries = getEntries();
+        const startDateEl = document.getElementById('startDate');
+        const endDateEl = document.getElementById('endDate');
+        const topSummaryEl = document.getElementById('topSummaryContainer');
+        const tableContainerEl = document.getElementById('tableContainer');
+        
+        if (!startDateEl || !endDateEl || !topSummaryEl || !tableContainerEl) return;
 
-        const filtered = entries.filter(e => (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate));
+        let startDate = startDateEl.value;
+        let endDate = endDateEl.value;
+        
+        const today = new Date();
+        if (!startDate) startDate = getLocalDateString(new Date(today.getFullYear(), today.getMonth(), 1));
+        if (!endDate) endDate = getLocalDateString(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+
+        const entries = getEntries();
+        const filtered = entries.filter(e => e.date >= startDate && e.date <= endDate);
 
         let totalLiters = 0, totalAmount = 0;
         filtered.forEach(e => {
@@ -371,7 +466,7 @@
             totalAmount += parseFloat(e.total);
         });
 
-        document.getElementById('topSummaryContainer').innerHTML = `Total Milk: ${totalLiters.toFixed(1)} Liters<br>Total to Pay: ₹${totalAmount.toFixed(2)}`;
+        topSummaryEl.innerHTML = `Total Milk: ${totalLiters.toFixed(1)} Liters<br>Total to Pay: ₹${totalAmount.toFixed(2)}`;
 
         let html = `<table><thead><tr><th>Date</th><th>Qty</th><th>Amount</th><th>Action</th></tr></thead><tbody>`;
         if (filtered.length === 0) {
@@ -391,17 +486,24 @@
             });
         }
         html += `</tbody></table>`;
-        document.getElementById('tableContainer').innerHTML = html;
+        tableContainerEl.innerHTML = html;
     }
 
     function openExportModal() {
-        document.getElementById('modalStartDate').value = document.getElementById('startDate').value;
-        document.getElementById('modalEndDate').value = document.getElementById('endDate').value;
-        document.getElementById('exportModal').style.display = 'flex';
+        const startDateEl = document.getElementById('startDate');
+        const endDateEl = document.getElementById('endDate');
+        const modalStartDateEl = document.getElementById('modalStartDate');
+        const modalEndDateEl = document.getElementById('modalEndDate');
+        const exportModalEl = document.getElementById('exportModal');
+
+        if (modalStartDateEl && startDateEl) modalStartDateEl.value = startDateEl.value;
+        if (modalEndDateEl && endDateEl) modalEndDateEl.value = endDateEl.value;
+        if (exportModalEl) exportModalEl.style.display = 'flex';
     }
 
     function closeExportModal() {
-        document.getElementById('exportModal').style.display = 'none';
+        const exportModalEl = document.getElementById('exportModal');
+        if (exportModalEl) exportModalEl.style.display = 'none';
     }
 
     function generatePdf(filterType) {
@@ -412,17 +514,22 @@
         if (filterType === '1month') {
             let d = new Date();
             d.setMonth(d.getMonth() - 1);
-            startDate = d.toISOString().split('T')[0];
-            endDate = now.toISOString().split('T')[0];
+            startDate = getLocalDateString(d);
+            endDate = getLocalDateString(now);
         } else if (filterType === '1year') {
             let d = new Date();
             d.setFullYear(d.getFullYear() - 1);
-            startDate = d.toISOString().split('T')[0];
-            endDate = now.toISOString().split('T')[0];
+            startDate = getLocalDateString(d);
+            endDate = getLocalDateString(now);
         } else if (filterType === 'custom') {
-            startDate = document.getElementById('modalStartDate').value;
-            endDate = document.getElementById('modalEndDate').value;
+            const modalStartDateEl = document.getElementById('modalStartDate');
+            const modalEndDateEl = document.getElementById('modalEndDate');
+            startDate = modalStartDateEl ? modalStartDateEl.value : '';
+            endDate = modalEndDateEl ? modalEndDateEl.value : '';
             if (!startDate || !endDate) { alert('Please select both start and end dates.'); return; }
+        } else if (filterType === 'all') {
+            startDate = '';
+            endDate = '';
         }
 
         closeExportModal();
@@ -445,6 +552,11 @@
                 'Rs. ' + parseFloat(e.total).toFixed(2)
             ];
         });
+
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            alert("PDF library is still loading or blocked. Please check your internet connection.");
+            return;
+        }
 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -483,5 +595,4 @@
 </script>
 
 </body>
-    </html>
-    
+</html>

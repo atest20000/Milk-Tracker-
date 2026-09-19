@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Milk Delivery Tracker</title>
+    <!-- Include html2pdf library for direct PDF downloading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --primary-color: #4f46e5;
@@ -132,8 +134,13 @@
 
     <hr class="no-print">
 
-    <div class="report-section">
-        <h3>Monthly / Custom Range Report</h3>
+    <!-- THIS WRAPPER CONTAINS ONLY WHAT GOES INTO THE PDF REPORT -->
+    <div id="pdfReportContainer" style="background: #ffffff; padding: 10px;">
+        <h3>Monthly Milk Delivery Report</h3>
+        <div id="pdfSummaryBox" style="background: #f0fdf4; border: 2px solid #bbf7d0; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 16px; font-weight: bold; color: #166534;">
+            Total Milk: 0.0 Liters | Total to Pay: ₹0.00
+        </div>
+        
         <div class="no-print" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
             <div>
                 <label for="startDate">From:</label>
@@ -146,8 +153,9 @@
         </div>
 
         <div id="tableContainer"></div>
-        <button class="btn-primary btn-pdf no-print" onclick="window.print()">Print / Save PDF Report</button>
     </div>
+
+    <button class="btn-primary btn-pdf" onclick="downloadPDFReport()">Download PDF Report</button>
 </div>
 
 <script>
@@ -271,12 +279,14 @@
         const filtered = entries.filter(e => (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate));
 
         let totalLiters = 0, totalAmount = 0;
-        entries.forEach(e => {
+        filtered.forEach(e => {
             totalLiters += parseFloat(e.qty);
             totalAmount += parseFloat(e.total);
         });
 
-        document.getElementById('topSummaryContainer').innerHTML = `Total Milk: ${totalLiters.toFixed(1)} Liters<br>Total to Pay: ₹${totalAmount.toFixed(2)}`;
+        const summaryText = `Total Milk: ${totalLiters.toFixed(1)} Liters | Total to Pay: ₹${totalAmount.toFixed(2)}`;
+        document.getElementById('topSummaryContainer').innerHTML = summaryText.replace(' | ', '<br>');
+        document.getElementById('pdfSummaryBox').innerHTML = summaryText;
 
         let html = `<table><thead><tr><th>Date</th><th>Qty</th><th>Amount</th><th class="no-print">Action</th></tr></thead><tbody>`;
         if (filtered.length === 0) {
@@ -296,6 +306,18 @@
         }
         html += `</tbody></table>`;
         document.getElementById('tableContainer').innerHTML = html;
+    }
+
+    function downloadPDFReport() {
+        const element = document.getElementById('pdfReportContainer');
+        const opt = {
+            margin:       0.3,
+            filename:     'Milk_Delivery_Report.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().from(element).set(opt).save();
     }
 </script>
 

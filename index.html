@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Milk Delivery Tracker</title>
-    <!-- Include html2pdf library for direct mobile file download -->
+    <!-- Include html2pdf library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
@@ -145,9 +145,6 @@
             color: #dc2626;
             margin-top: 5px;
         }
-        
-        /* Utility class to hide action buttons inside the PDF export payload */
-        .hide-in-pdf { display: inline-block; }
     </style>
 </head>
 <body>
@@ -201,8 +198,8 @@
     <button class="btn-primary btn-pdf-action" onclick="openExportModal()">Export PDF</button>
 </div>
 
-<!-- HIDDEN DEDICATED CONTAINER STRICTLY FOR PDF GENERATION CONTENT -->
-<div id="pdfExportContainer" style="display:none; background:#ffffff; padding:20px; font-family:sans-serif;">
+<!-- OFF-SCREEN CONTAINER FOR RELIABLE PDF RENDERING (NEVER BLANK) -->
+<div id="pdfExportContainer" style="position: absolute; left: -9999px; top: 0; width: 560px; background: #ffffff; padding: 20px; font-family: sans-serif;">
     <h2 style="text-align:center; color:#4f46e5; margin-bottom:5px;">Milk Delivery Report</h2>
     <div id="pdfModalRangeLabel" style="text-align:center; font-size:13px; color:#6b7280; margin-bottom:15px;"></div>
     <div id="pdfReportSummaryBox" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; font-size: 15px; font-weight: bold; color: #166534;">
@@ -434,7 +431,7 @@
             totalAmount += parseFloat(e.total);
         });
 
-        // Populate hidden PDF container cleanly without action columns
+        // Populate hidden layout container cleanly with calculated data
         document.getElementById('pdfModalRangeLabel').innerText = `Period: ${startDate || 'Beginning'} to ${endDate || 'Present'}`;
         document.getElementById('pdfReportSummaryBox').innerText = `Total Milk: ${totalLiters.toFixed(1)} Liters | Total to Pay: ₹${totalAmount.toFixed(2)}`;
 
@@ -454,21 +451,18 @@
         pdfTableHTML += `</tbody></table>`;
         document.getElementById('pdfTableContainer').innerHTML = pdfTableHTML;
 
-        // Trigger direct pdf download via html2pdf library
-        const element = document.getElementById('pdfExportContainer');
-        element.style.display = 'block';
-
-        const opt = {
-            margin:       0.3,
-            filename:     'Milk_Delivery_Report.pdf',
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
-            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-        };
-
-        html2pdf().from(element).set(opt).save().then(() => {
-            element.style.display = 'none'; // Hide container back after download triggers
-        });
+        // Allow DOM to process updates, then download PDF file directly
+        setTimeout(() => {
+            const element = document.getElementById('pdfExportContainer');
+            const opt = {
+                margin:       0.3,
+                filename:     'Milk_Delivery_Report.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().from(element).set(opt).save();
+        }, 150);
     }
 </script>
 

@@ -2,469 +2,575 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Milk Delivery Tracker</title>
-    <!-- Include html2pdf library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Direct Vector PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+
     <style>
         :root {
-            --primary-color: #4f46e5;
-            --bg-color: #f3f4f6;
-            --card-bg: #ffffff;
-            --text-color: #1f2937;
+            --ios-bg: #F2F2F7;
+            --ios-card: #FFFFFF;
+            --ios-primary: #4F46E5;
+            --ios-danger: #FF3B30;
+            --ios-text: #000000;
+            --ios-secondary-text: #8E8E93;
+            --ios-border: #C6C6C8;
         }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--ios-bg);
+            color: var(--ios-text);
             margin: 0;
-            padding: 15px;
+            padding: 20px 16px 40px 16px;
+            -webkit-tap-highlight-color: transparent;
         }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            padding: 20px;
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            margin-top: 10px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 5px 0;
+            color: #1C1C1E;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: var(--ios-secondary-text);
+            margin: 0;
+        }
+
+        .card {
+            background-color: var(--ios-card);
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        h2, h3 { text-align: center; color: var(--primary-color); margin-top: 0; }
-        .rate-badge {
-            text-align: center;
-            background: #e0e7ff;
-            color: var(--primary-color);
-            padding: 8px;
-            border-radius: 6px;
-            font-weight: bold;
+            padding: 16px;
             margin-bottom: 20px;
-            font-size: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .top-summary-box {
-            background: #f0fdf4;
-            border: 2px solid #bbf7d0;
-            padding: 14px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            color: #166534;
+
+        .form-group {
+            margin-bottom: 14px;
         }
-        .form-group { margin-bottom: 16px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; }
-        input[type="date"], input[type="number"] {
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ios-secondary-text);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        input {
             width: 100%;
-            padding: 12px;
-            box-sizing: border-box;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+            height: 44px;
+            padding: 8px 12px;
+            border: 1px solid var(--ios-border);
+            border-radius: 8px;
             font-size: 16px;
+            box-sizing: border-box;
+            background-color: #FAFAFA;
+            -webkit-appearance: none;
         }
+
+        input:focus {
+            outline: none;
+            border-color: var(--ios-primary);
+            background-color: #FFFFFF;
+        }
+
         .quick-buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 8px;
-            margin-bottom: 12px;
-        }
-        .btn-qty {
-            padding: 12px 6px;
-            font-size: 15px;
-            font-weight: bold;
-            border: 2px solid var(--primary-color);
-            background: white;
-            color: var(--primary-color);
-            border-radius: 6px;
-            cursor: pointer;
-            text-align: center;
-        }
-        .btn-qty.active { background: var(--primary-color); color: white; }
-        .btn-primary {
-            width: 100%;
-            padding: 14px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        hr { border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
-        th, td { border: 1px solid #d1d5db; padding: 10px 8px; text-align: center; }
-        th { background-color: var(--primary-color); color: white; }
-        .action-btn { padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; color: white; border: none; }
-        .edit-btn { background: #3b82f6; margin-right: 4px; }
-        .delete-btn { background: #ef4444; }
-        
-        .btn-pdf-action { 
-            background: #d97706; 
-            margin-top: 15px; 
+            margin-bottom: 10px;
         }
 
-        /* MODAL POPUP STYLING */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
-        .modal-btn {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            border: 1px solid #d1d5db;
-            background: white;
-            color: var(--text-color);
+        .btn-qty {
+            height: 40px;
+            font-size: 14px;
             font-weight: bold;
-            border-radius: 6px;
+            border: 2px solid var(--ios-primary);
+            background: white;
+            color: var(--ios-primary);
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 15px;
             text-align: center;
         }
-        .modal-btn:hover { background: #f3f4f6; }
-        .modal-btn-primary {
-            background: #2563eb;
+
+        .btn-qty.active { background: var(--ios-primary); color: white; }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            width: 100%;
+            height: 48px;
+            background-color: var(--ios-primary);
             color: white;
             border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
         }
-        .modal-btn-cancel {
-            background: transparent;
+
+        .btn-export-csv { background-color: #34C759; }
+        .btn-export-pdf { background-color: #FF9500; }
+
+        .summary-card {
+            display: flex;
+            justify-content: space-between;
+            background-color: #EEF2FF;
+            border: 1px solid #C7D2FE;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-item .title {
+            font-size: 11px;
+            color: var(--ios-secondary-text);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .summary-item .amount {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ios-primary);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--ios-bg);
+            color: var(--ios-secondary-text);
+            font-weight: 600;
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--ios-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #E5E5EA;
+            white-space: nowrap;
+        }
+
+        .action-btn {
+            color: var(--ios-primary);
             border: none;
-            color: #dc2626;
-            margin-top: 5px;
+            background: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 0;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        .delete-btn { color: var(--ios-danger); }
+
+        .empty-state {
+            text-align: center;
+            color: var(--ios-secondary-text);
+            padding: 20px 0;
+            font-size: 14px;
+        }
+
+        /* Modal Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 14px;
+            padding: 20px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .modal-btn {
+            width: 100%;
+            height: 40px;
+            background-color: #F2F2F7;
+            border: 1px solid #C6C6C8;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .modal-btn.primary {
+            background-color: var(--ios-primary);
+            color: white;
+            border: none;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>🥛 Milk Delivery Tracker</h2>
-    
-    <div id="topSummaryContainer" class="top-summary-box">
-        Total Milk: 0.0 Liters<br>
-        Total to Pay: ₹0.00
+    <div class="header">
+        <h1>🥛 Milk Delivery Tracker</h1>
+        <p>Manage Daily Deliveries & Bills</p>
     </div>
 
-    <div class="rate-badge">Default Rate: ₹48 per Liter | Default Qty: 1.5L</div>
-
-    <div>
-        <h3>Add or Update Entry</h3>
-        <div class="form-group">
-            <label for="entryDate">Date:</label>
-            <input type="date" id="entryDate" onchange="checkDateEntry()">
+    <!-- Configuration Card (Change Rate Here) -->
+    <div class="card" style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <span style="font-size: 12px; color: var(--ios-secondary-text); font-weight: 600; text-transform: uppercase;">Milk Rate (₹/Liter)</span>
         </div>
+        <div style="width: 120px;">
+            <input type="number" id="globalRate" value="48" step="0.5" min="1" onchange="updateRate()" style="height: 36px; text-align: center; font-weight: bold;">
+        </div>
+    </div>
 
-        <div class="form-group">
-            <label>Select Quantity:</label>
-            <div class="quick-buttons">
-                <button type="button" class="btn-qty" id="btn-0" onclick="setQuantity(0)">0 Liter</button>
-                <button type="button" class="btn-qty" id="btn-1" onclick="setQuantity(1)">1 Liter</button>
-                <button type="button" class="btn-qty" id="btn-1.5" onclick="setQuantity(1.5)">1.5 Liter</button>
-                <button type="button" class="btn-qty" id="btn-2" onclick="setQuantity(2)">2 Liters</button>
+    <!-- Data Input Form -->
+    <div class="card">
+        <form id="milkForm">
+            <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" id="date" required>
             </div>
-            <input type="number" id="customQty" step="0.1" placeholder="Or custom liters..." oninput="clearActiveButtons()">
-        </div>
 
-        <button class="btn-primary" onclick="saveEntry()">Save Entry</button>
+            <div class="form-group">
+                <label>Quantity (Liters)</label>
+                <div class="quick-buttons">
+                    <button type="button" class="btn-qty" onclick="setQuantity(0)">0 L</button>
+                    <button type="button" class="btn-qty" onclick="setQuantity(1)">1 L</button>
+                    <button type="button" class="btn-qty active" onclick="setQuantity(1.5)">1.5 L</button>
+                    <button type="button" class="btn-qty" onclick="setQuantity(2)">2 L</button>
+                </div>
+                <input type="number" id="quantity" step="0.1" min="0" placeholder="Custom liters..." required>
+            </div>
+
+            <button type="submit" class="btn">Save Entry</button>
+        </form>
     </div>
 
-    <hr>
-
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
-        <div>
-            <label for="startDate">From:</label>
-            <input type="date" id="startDate" onchange="loadReport()">
+    <!-- Summary & Ledger Area -->
+    <div class="card">
+        <div class="summary-card">
+            <div class="summary-item">
+                <div class="title">Total Milk</div>
+                <div class="amount" id="totalLiters">0.0 L</div>
+            </div>
+            <div class="summary-item">
+                <div class="title">Total Amount</div>
+                <div class="amount" id="totalAmount">₹0.00</div>
+            </div>
         </div>
-        <div>
-            <label for="endDate">To:</label>
-            <input type="date" id="endDate" onchange="loadReport()">
+
+        <label style="margin-bottom:10px;">Delivery History</label>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Qty</th>
+                        <th>Rate</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsBody"></tbody>
+            </table>
+            <div id="emptyState" class="empty-state">No delivery entries found.</div>
         </div>
     </div>
 
-    <div id="tableContainer"></div>
-
-    <button class="btn-primary btn-pdf-action" onclick="openExportModal()">Export PDF</button>
-</div>
-
-<!-- OFF-SCREEN CONTAINER FOR RELIABLE PDF RENDERING (NEVER BLANK) -->
-<div id="pdfExportContainer" style="position: absolute; left: -9999px; top: 0; width: 560px; background: #ffffff; padding: 20px; font-family: sans-serif;">
-    <h2 style="text-align:center; color:#4f46e5; margin-bottom:5px;">Milk Delivery Report</h2>
-    <div id="pdfModalRangeLabel" style="text-align:center; font-size:13px; color:#6b7280; margin-bottom:15px;"></div>
-    <div id="pdfReportSummaryBox" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; font-size: 15px; font-weight: bold; color: #166534;">
-        Total Milk: 0.0 Liters | Total to Pay: ₹0.00
+    <!-- Export Buttons -->
+    <div class="btn-group">
+        <button class="btn btn-export-csv" onclick="exportToCSV()">Export CSV</button>
+        <button class="btn btn-export-pdf" onclick="openPdfModal()">Export PDF</button>
     </div>
-    <div id="pdfTableContainer"></div>
-</div>
 
-<!-- RANGE SELECTION MODAL POPUP -->
-<div id="exportModal" class="modal-overlay">
-    <div class="modal-content">
-        <h3 style="text-align:center; margin-bottom:15px; color:#1f2937;">Select PDF Export Range</h3>
-        <button class="modal-btn" onclick="applyRangePreset('all')">All Time Data</button>
-        <button class="modal-btn" onclick="applyRangePreset('month')">Last 1 Month</button>
-        <button class="modal-btn" onclick="applyRangePreset('year')">Last 1 Year</button>
-        
-        <div style="border-top: 1px solid #e5e7eb; margin: 15px 0; padding-top: 10px;">
-            <label style="font-size:13px; margin-bottom:4px;">Custom Date Range:</label>
-            <input type="date" id="modalStartDate" style="margin-bottom:8px; padding:8px; font-size:14px; width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px;">
-            <input type="date" id="modalEndDate" style="margin-bottom:10px; padding:8px; font-size:14px; width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px;">
-            <button class="modal-btn modal-btn-primary" onclick="applyCustomRange()">Export Custom Range</button>
+    <!-- PDF Filter Selection Modal -->
+    <div id="pdfModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">Select PDF Export Range</div>
+            <button class="modal-btn" onclick="generatePdf('all')">All Time Data</button>
+            <button class="modal-btn" onclick="generatePdf('1month')">Last 1 Month</button>
+            <button class="modal-btn" onclick="generatePdf('1year')">Last 1 Year</button>
+            
+            <div style="margin-top: 10px; border-top: 1px solid #E5E5EA; padding-top: 10px;">
+                <label style="font-size: 11px;">Custom Date Range</label>
+                <input type="date" id="pdfStartDate" style="margin-bottom: 8px; height: 38px;">
+                <input type="date" id="pdfEndDate" style="margin-bottom: 10px; height: 38px;">
+                <button class="modal-btn primary" onclick="generatePdf('custom')">Export Custom Range</button>
+            </div>
+            
+            <button class="modal-btn" style="background: none; border: none; color: var(--ios-danger); margin-bottom: 0;" onclick="closePdfModal()">Cancel</button>
         </div>
-        <button class="modal-btn modal-btn-cancel" onclick="closeExportModal()">Cancel</button>
     </div>
-</div>
 
-<script>
-    const PRICE_PER_LITER = 48;
-    const DEFAULT_QTY = 1.5;
-    let selectedQty = null;
+    <script>
+        let currentRate = parseFloat(localStorage.getItem('milk_rate')) || 48;
+        document.getElementById('globalRate').value = currentRate;
 
-    window.onload = function() {
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-        document.getElementById('entryDate').value = todayStr;
-        
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-        
-        document.getElementById('startDate').value = firstDay;
-        document.getElementById('endDate').value = lastDay;
+        function setTodayDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            document.getElementById('date').value = `${year}-${month}-${day}`;
+        }
 
-        autoPopulateMonth(today.getFullYear(), today.getMonth());
-        checkDateEntry();
-        loadReport();
-    };
+        setTodayDate();
+        document.getElementById('quantity').value = 1.5; // default qty
 
-    function autoPopulateMonth(year, month) {
-        let entries = getEntries();
-        const today = new Date();
-        const lastDayNum = (year === today.getFullYear() && month === today.getMonth()) ? today.getDate() : new Date(year, month + 1, 0).getDate();
+        let records = JSON.parse(localStorage.getItem('milk_records')) || [];
 
-        let added = false;
-        for (let day = 1; day <= lastDayNum; day++) {
-            const dayStr = String(day).padStart(2, '0');
-            const monthStr = String(month + 1).padStart(2, '0');
-            const dateStr = `${year}-${monthStr}-${dayStr}`;
-
-            const exists = entries.some(e => e.date === dateStr);
-            if (!exists) {
-                entries.push({ date: dateStr, qty: DEFAULT_QTY, total: DEFAULT_QTY * PRICE_PER_LITER });
-                added = true;
+        function updateRate() {
+            const val = parseFloat(document.getElementById('globalRate').value);
+            if (!isNaN(val) && val > 0) {
+                currentRate = val;
+                localStorage.setItem('milk_rate', currentRate);
+                renderTable(records);
             }
         }
-        if (added) {
-            entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-            localStorage.setItem('milk_entries', JSON.stringify(entries));
-        }
-    }
 
-    function setQuantity(qty) {
-        selectedQty = qty;
-        document.getElementById('customQty').value = qty;
-        document.querySelectorAll('.btn-qty').forEach(btn => btn.classList.remove('active'));
-        const targetBtn = document.getElementById('btn-' + qty);
-        if (targetBtn) targetBtn.classList.add('active');
-    }
-
-    function clearActiveButtons() {
-        selectedQty = null;
-        document.querySelectorAll('.btn-qty').forEach(btn => btn.classList.remove('active'));
-    }
-
-    function getEntries() {
-        let entries = localStorage.getItem('milk_entries');
-        return entries ? JSON.parse(entries) : [];
-    }
-
-    function checkDateEntry() {
-        const date = document.getElementById('entryDate').value;
-        const entries = getEntries();
-        const found = entries.find(e => e.date === date);
-        if (found !== undefined) {
-            setQuantity(found.qty);
-        } else {
-            clearActiveButtons();
-            document.getElementById('customQty').value = '';
-        }
-    }
-
-    function saveEntry() {
-        const date = document.getElementById('entryDate').value;
-        const customInput = parseFloat(document.getElementById('customQty').value);
-        const qty = (selectedQty !== null && selectedQty !== '') ? selectedQty : customInput;
-
-        if (!date) { alert('Please select a date.'); return; }
-        if (isNaN(qty) || qty < 0) { alert('Please enter a valid quantity.'); return; }
-
-        let entries = getEntries();
-        const existingIndex = entries.findIndex(e => e.date === date);
-        
-        if (existingIndex >= 0) {
-            entries[existingIndex].qty = qty;
-            entries[existingIndex].total = qty * PRICE_PER_LITER;
-        } else {
-            entries.push({ date: date, qty: qty, total: qty * PRICE_PER_LITER });
+        function setQuantity(val) {
+            document.getElementById('quantity').value = val;
+            document.querySelectorAll('.btn-qty').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
         }
 
-        entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-        localStorage.setItem('milk_entries', JSON.stringify(entries));
-        loadReport();
-        alert('Entry saved for ' + date + '!');
-    }
-
-    function editEntry(date, qty) {
-        document.getElementById('entryDate').value = date;
-        setQuantity(qty);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function deleteEntry(date) {
-        if (confirm('Delete entry for ' + date + '?')) {
-            let entries = getEntries().filter(e => e.date !== date);
-            localStorage.setItem('milk_entries', JSON.stringify(entries));
-            checkDateEntry();
-            loadReport();
+        function saveAndRender() {
+            localStorage.setItem('milk_records', JSON.stringify(records));
+            renderTable(records);
         }
-    }
 
-    function loadReport() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const entries = getEntries();
+        document.getElementById('milkForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const date = document.getElementById('date').value;
+            const quantity = parseFloat(document.getElementById('quantity').value);
+            const rate = currentRate;
+            const total = quantity * rate;
 
-        const filtered = entries.filter(e => (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate));
+            // Check if entry for date already exists, update if it does, else add new
+            const existingIndex = records.findIndex(r => r.date === date);
+            if (existingIndex >= 0) {
+                records[existingIndex].quantity = quantity;
+                records[existingIndex].rate = rate;
+                records[existingIndex].total = total;
+            } else {
+                records.unshift({
+                    id: Date.now(),
+                    date: date,
+                    quantity: quantity,
+                    rate: rate,
+                    total: total
+                });
+            }
 
-        let totalLiters = 0, totalAmount = 0;
-        filtered.forEach(e => {
-            totalLiters += parseFloat(e.qty);
-            totalAmount += parseFloat(e.total);
+            // Sort records by date descending
+            records.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            saveAndRender();
+            setTodayDate();
         });
 
-        document.getElementById('topSummaryContainer').innerHTML = `Total Milk: ${totalLiters.toFixed(1)} Liters<br>Total to Pay: ₹${totalAmount.toFixed(2)}`;
+        function editRecord(id) {
+            const r = records.find(item => item.id === id);
+            if (r) {
+                document.getElementById('date').value = r.date;
+                document.getElementById('quantity').value = r.quantity;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
 
-        let html = `<table><thead><tr><th>Date</th><th>Qty</th><th>Amount</th><th>Action</th></tr></thead><tbody>`;
-        if (filtered.length === 0) {
-            html += `<tr><td colspan="4">No entries found for this range.</td></tr>`;
-        } else {
-            filtered.forEach(e => {
-                html += `<tr>
-                    <td>${e.date}</td>
-                    <td>${e.qty}L</td>
-                    <td>₹${e.total}</td>
+        function deleteRecord(id) {
+            if (confirm("Are you sure you want to delete this entry?")) {
+                records = records.filter(r => r.id !== id);
+                saveAndRender();
+            }
+        }
+
+        function renderTable(dataToRender) {
+            const tbody = document.getElementById('recordsBody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            let grandLiters = 0, grandAmount = 0;
+
+            if (!dataToRender || dataToRender.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+            }
+
+            dataToRender.forEach(r => {
+                const rateToUse = r.rate !== undefined ? r.rate : currentRate;
+                const rowTotal = r.quantity * rateToUse;
+
+                grandLiters += r.quantity;
+                grandAmount += rowTotal;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${r.date}</td>
+                    <td>${r.quantity} L</td>
+                    <td>₹${rateToUse}</td>
+                    <td><b>₹${rowTotal.toFixed(2)}</b></td>
                     <td>
-                        <button class="action-btn edit-btn" onclick="editEntry('${e.date}', ${e.qty})">Edit</button>
-                        <button class="action-btn delete-btn" onclick="deleteEntry('${e.date}')">X</button>
+                        <button class="action-btn" onclick="editRecord(${r.id})">Edit</button>
+                        <button class="action-btn delete-btn" onclick="deleteRecord(${r.id})">Del</button>
                     </td>
-                </tr>`;
+                `;
+                tbody.appendChild(row);
             });
-        }
-        html += `</tbody></table>`;
-        document.getElementById('tableContainer').innerHTML = html;
-    }
 
-    /* MODAL FILTER & PDF GENERATION FUNCTIONS */
-    function openExportModal() {
-        document.getElementById('modalStartDate').value = document.getElementById('startDate').value;
-        document.getElementById('modalEndDate').value = document.getElementById('endDate').value;
-        document.getElementById('exportModal').style.display = 'flex';
-    }
-
-    function closeExportModal() {
-        document.getElementById('exportModal').style.display = 'none';
-    }
-
-    function applyRangePreset(preset) {
-        const today = new Date();
-        let start = '', end = today.toISOString().split('T')[0];
-
-        if (preset === 'all') {
-            start = '';
-            end = '';
-        } else if (preset === 'month') {
-            let d = new Date();
-            d.setMonth(d.getMonth() - 1);
-            start = d.toISOString().split('T')[0];
-        } else if (preset === 'year') {
-            let d = new Date();
-            d.setFullYear(d.getFullYear() - 1);
-            start = d.toISOString().split('T')[0];
+            document.getElementById('totalLiters').textContent = grandLiters.toFixed(1) + ' L';
+            document.getElementById('totalAmount').textContent = '₹' + grandAmount.toFixed(2);
         }
 
-        document.getElementById('startDate').value = start;
-        document.getElementById('endDate').value = end;
-        loadReport();
-        closeExportModal();
-        generatePDFDownload(start, end);
-    }
+        function openPdfModal() {
+            document.getElementById('pdfModal').style.display = 'flex';
+        }
 
-    function applyCustomRange() {
-        const s = document.getElementById('modalStartDate').value;
-        const e = document.getElementById('modalEndDate').value;
-        if (!s || !e) { alert('Please select both start and end dates.'); return; }
+        function closePdfModal() {
+            document.getElementById('pdfModal').style.display = 'none';
+        }
 
-        document.getElementById('startDate').value = s;
-        document.getElementById('endDate').value = e;
-        loadReport();
-        closeExportModal();
-        generatePDFDownload(s, e);
-    }
+        // Direct Vector PDF Generation (Guaranteed non-blank output)
+        function generatePdf(filterType) {
+            let filtered = [...records];
+            const now = new Date();
 
-    function generatePDFDownload(startDate, endDate) {
-        const entries = getEntries();
-        const filtered = entries.filter(e => (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate));
+            if (filterType === '1month') {
+                const oneMonthAgo = new Date();
+                oneMonthAgo.setMonth(now.getMonth() - 1);
+                filtered = records.filter(r => new Date(r.date + 'T00:00:00') >= oneMonthAgo);
+            } else if (filterType === '1year') {
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(now.getFullYear() - 1);
+                filtered = records.filter(r => new Date(r.date + 'T00:00:00') >= oneYearAgo);
+            } else if (filterType === 'custom') {
+                const startVal = document.getElementById('pdfStartDate').value;
+                const endVal = document.getElementById('pdfEndDate').value;
+                filtered = records.filter(r => {
+                    if (startVal && r.date < startVal) return false;
+                    if (endVal && r.date > endVal) return false;
+                    return true;
+                });
+            }
 
-        let totalLiters = 0, totalAmount = 0;
-        filtered.forEach(e => {
-            totalLiters += parseFloat(e.qty);
-            totalAmount += parseFloat(e.total);
-        });
+            if (filtered.length === 0) {
+                alert("No records match the selected date range.");
+                return;
+            }
 
-        // Populate hidden layout container cleanly with calculated data
-        document.getElementById('pdfModalRangeLabel').innerText = `Period: ${startDate || 'Beginning'} to ${endDate || 'Present'}`;
-        document.getElementById('pdfReportSummaryBox').innerText = `Total Milk: ${totalLiters.toFixed(1)} Liters | Total to Pay: ₹${totalAmount.toFixed(2)}`;
+            closePdfModal();
 
-        let pdfTableHTML = `<table style="width:100%; border-collapse:collapse; font-size:14px;"><thead><tr><th style="border:1px solid #d1d5db; padding:10px; background:#4f46e5; color:white;">Date</th><th style="border:1px solid #d1d5db; padding:10px; background:#4f46e5; color:white;">Qty</th><th style="border:1px solid #d1d5db; padding:10px; background:#4f46e5; color:white;">Amount</th></tr></thead><tbody>`;
-        
-        if (filtered.length === 0) {
-            pdfTableHTML += `<tr><td colspan="3" style="border:1px solid #d1d5db; padding:10px; text-align:center;">No entries found for this range.</td></tr>`;
-        } else {
-            filtered.forEach(e => {
-                pdfTableHTML += `<tr>
-                    <td style="border:1px solid #d1d5db; padding:10px; text-align:center;">${e.date}</td>
-                    <td style="border:1px solid #d1d5db; padding:10px; text-align:center;">${e.qty}L</td>
-                    <td style="border:1px solid #d1d5db; padding:10px; text-align:center;">₹${e.total}</td>
-                </tr>`;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+            doc.setFontSize(18);
+            doc.setTextColor(28, 28, 30);
+            doc.text("Milk Delivery Report", 14, 20);
+
+            doc.setFontSize(10);
+            doc.setTextColor(142, 142, 147);
+            doc.text("Tracker Summary (" + filterType.toUpperCase() + ")", 14, 26);
+
+            let totLiters = 0, totAmount = 0;
+            const tableRows = filtered.map(r => {
+                const rRate = r.rate !== undefined ? r.rate : currentRate;
+                const rTotal = r.quantity * rRate;
+                totLiters += r.quantity;
+                totAmount += rTotal;
+
+                return [
+                    r.date,
+                    r.quantity.toFixed(1) + ' L',
+                    'Rs. ' + rRate.toFixed(2),
+                    'Rs. ' + rTotal.toFixed(2)
+                ];
             });
+
+            // Summary Table
+            doc.autoTable({
+                startY: 32,
+                head: [['Total Milk', 'Total Amount to Pay']],
+                body: [[
+                    totLiters.toFixed(1) + ' Liters',
+                    'Rs. ' + totAmount.toFixed(2)
+                ]],
+                theme: 'grid',
+                headStyles: { fillColor: [238, 242, 255], textColor: [0, 0, 0], fontStyle: 'bold' },
+                bodyStyles: { fontStyle: 'bold', textColor: [79, 70, 229] }
+            });
+
+            // Transaction History Table
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 10,
+                head: [['Date', 'Quantity', 'Rate', 'Total']],
+                body: tableRows,
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+                styles: { fontSize: 10, cellPadding: 4 }
+            });
+
+            const fileName = `Milk_Delivery_Report_${filterType}_${new Date().toISOString().slice(0, 10)}.pdf`;
+            doc.save(fileName);
         }
-        pdfTableHTML += `</tbody></table>`;
-        document.getElementById('pdfTableContainer').innerHTML = pdfTableHTML;
 
-        // Allow DOM to process updates, then download PDF file directly
-        setTimeout(() => {
-            const element = document.getElementById('pdfExportContainer');
-            const opt = {
-                margin:       0.3,
-                filename:     'Milk_Delivery_Report.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
-            html2pdf().from(element).set(opt).save();
-        }, 150);
-    }
-</script>
-
-</body>
-</html>
+        function exportToCSV() {
+            if (records.length === 0) return alert("No data available to export.");
+            let csvContent = "data:text/csv;charset=utf-8,Date,Quantity (L),Rate (Rs),Total (Rs)\n";
+            records.forEach(r => {
+                const rRate = r.rate !== undefined ? r.rate : currentRate;
+                const rTotal = r.quantity * rRate;
+                csvContent += `${r.date},${r.quantity},${rRate},${rTotal}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const li

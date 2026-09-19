@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milk Delivery Tracker</title>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h2, h3 { text-align: center; color: var(--primary-color); margin-top: 0; }
+        .rate-badge {
+            text-align: center;
+            background: #e0e7ff;
+            color: var(--primary-color);
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .top-summary-box {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #166534;
+        }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; }
+        input[type="date"], input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .quick-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .btn-qty {
+            padding: 12px 6px;
+            font-size: 15px;
+            font-weight: bold;
+            border: 2px solid var(--primary-color);
+            background: white;
+            color: var(--primary-color);
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn-qty.active { background: var(--primary-color); color: white; }
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        hr { border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+        th, td { border: 1px solid #e5e7eb; padding: 10px 6px; text-align: center; }
+        th { background-color: #f9fafb; }
+        .action-btn { padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; color: white; border: none; }
+        .edit-btn { background: #3b82f6; margin-right: 4px; }
+        .delete-btn { background: #ef4444; }
+        .btn-pdf { background: #d97706; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🥛 Milk Tracker & Report</h2>
+    
+    <div id="topSummaryContainer" class="top-summary-box">
+        Total Milk: 0.0 Liters<br>
+        Total to Pay: ₹0.00
+    </div>
+
+    <div class="rate-badge">Default Rate: ₹48 per Liter | Default Qty: 1.5L</div>
+
+    <div class="no-print">
+        <h3>Add or Update Entry</h3>
+        <div class="form-group">
+            <label for="entryDate">Date:</label>
+            <input type="date" id="entryDate" onchange="checkDateEntry()">
+        </div>
+
+        <div class="form-group">
+            <label>Select Quantity:</label>
+            <div class="quick-buttons">
+                <button type="button" class="btn-qty" id="btn-0" onclick="setQuantity(0)">0 Liter</button>
+                <button type="button" class="btn-qty" id="btn-1" onclick="setQuantity(1)">1 Liter</button>
+                <button type="button" class="btn-qty" id="btn-1.5" onclick="setQuantity(1.5)">1.5 Liter</button>
+                <button type="button" class="btn-qty" id="btn-2" onclick="setQuantity(2)">2 Liters</button>
+            </div>
+            <input type="number" id="customQty" step="0.1" placeholder="Or custom liters..." oninput="clearActiveButtons()">
+        </div>
+
+        <button class="btn-primary" onclick="saveEntry()">Save Entry</button>
+    </div>
+
+    <hr class="no-print">
+
+    <div class="report-section">
+        <h3>Monthly / Custom Range Report</h3>
+        <div class="no-print" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+            <div>
+                <label for="startDate">From:</label>
+                <input type="date" id="startDate" onchange="loadReport()">
+            </div>
+            <div>
+                <label for="endDate">To:</label>
+                <input type="date" id="endDate" onchange="loadReport()">
+            </div>
+        </div>
+
+        <div id="tableContainer"></div>
+        <button class="btn-primary btn-pdf no-print" onclick="window.print()">Print / Save PDF Report</button>
+    </div>
+</div>
+
+<script>
+    const PRICE_PER_LITER = 48;
+    const DEFAULT_QTY = 1.5;
+    let selectedQty = null;
+
+    window.onload = function() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        document.getElementById('entryDate').value = todayStr;
+        
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+        
+        document.getElementById('startDate').value = firstDay;
+        document.getElementById('endDate').value = lastDay;
+
+        autoPopulateMonth(today.getFullYear(), today.getMonth());
+        checkDateEntry();
+        loadReport();
+    };
+
+    function autoPopulateMonth(year, month) {
+        let entries = getEntries();
+        const today = new Date();
+        const lastDayNum = (year === today.getFullYear() && month === today.getMonth()) ? today.getDate() : new Date(year, month + 1, 0).getDate();
+
+        let added = false;
+        for (let day = 1; day <= lastDayNum; day++) {
+            const dayStr = String(day).padStart(2, '0');
+            const monthStr = String(month + 1).padStart(2, '0');
+            const dateStr = `${year}-${monthStr}-${dayStr}`;
+
+            const exists = entries.some(e => e.date === dateStr);
+            if (!exists) {
+                entries.push({ date: dateStr, qty: DEFAULT_QTY, total: DEFAULT_QTY * PRICE_PER_LITER });
+                added = true;
+            }
+        }
+        if (added) {
+            entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+            localStorage.setItem('milk_entries', JSON.stringify(entries));
+        }
+    }
+
+    function setQuantity(qty) {
+        selectedQty = qty;
+        document.getElementById('customQty').value = qty;
+        document.querySelectorAll('.btn-qty').forEach(btn => btn.classList.remove('active'));
+        const targetBtn = document.getElementById('btn-' + qty);
+        if (targetBtn) targetBtn.classList.add('active');
+    }
+
+    function clearActiveButtons() {
+        selectedQty = null;
+        document.querySelectorAll('.btn-qty').forEach(btn => btn.classList.remove('active'));
+    }
+
+    function getEntries() {
+        let entries = localStorage.getItem('milk_entries');
+        return entries ? JSON.parse(entries) : [];
+    }
+
+    function checkDateEntry() {
+        const date = document.getElementById('entryDate').value;
+        const entries = getEntries();
+        const found = entries.find(e => e.date === date);
+        if (found !== undefined) {
+            setQuantity(found.qty);
+        } else {
+            clearActiveButtons();
+            document.getElementById('customQty').value = '';
+        }
+    }
+
+    function saveEntry() {
+        const date = document.getElementById('entryDate').value;
+        const customInput = parseFloat(document.getElementById('customQty').value);
+        const qty = (selectedQty !== null && selectedQty !== '') ? selectedQty : customInput;
+
+        if (!date) { alert('Please select a date.'); return; }
+        if (isNaN(qty) || qty < 0) { alert('Please enter a valid quantity.'); return; }
+
+        let entries = getEntries();
+        const existingIndex = entries.findIndex(e => e.date === date);
+        
+        if (existingIndex >= 0) {
+            entries[existingIndex].qty = qty;
+            entries[existingIndex].total = qty * PRICE_PER_LITER;
+        } else {
+            entries.push({ date: date, qty: qty, total: qty * PRICE_PER_LITER });
+        }
+
+        entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+        localStorage.setItem('milk_entries', JSON.stringify(entries));
+        loadReport();
+        alert('Entry saved for ' + date + '!');
+    }
+
+    function editEntry(date, qty) {
+        document.getElementById('entryDate').value = date;
+        setQuantity(qty);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function deleteEntry(date) {
+        if (confirm('Delete entry for ' + date + '?')) {
+            let entries = getEntries().filter(e => e.date !== date);
+            localStorage.setItem('milk_entries', JSON.stringify(entries));
+            checkDateEntry();
+            loadReport();
+        }
+    }
+
+    function loadReport() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const entries = getEntries();
+
+        const filtered = entries.filter(e => (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate));
+
+        let totalLiters = 0, totalAmount = 0;
+        entries.forEach(e => {
+            totalLiters += parseFloat(e.qty);
+            totalAmount += parseFloat(e.total);
+        });
+
+        document.getElementById('topSummaryContainer').innerHTML = `Total Milk: ${totalLiters.toFixed(1)} Liters<br>Total to Pay: ₹${totalAmount.toFixed(2)}`;
+
+        let html = `<table><thead><tr><th>Date</th><th>Qty</th><th>Amount</th><th class="no-print">Action</th></tr></thead><tbody>`;
+        if (filtered.length === 0) {
+            html += `<tr><td colspan="4">No entries found for this range.</td></tr>`;
+        } else {
+            filtered.forEach(e => {
+                html += `<tr>
+                    <td>${e.date}</td>
+                    <td>${e.qty}L</td>
+                    <td>₹${e.total}</td>
+                    <td class="no-print">
+                        <button class="action-btn edit-btn" onclick="editEntry('${e.date}', ${e.qty})">Edit</button>
+                        <button class="action-btn delete-btn" onclick="deleteEntry('${e.date}')">X</button>
+                    </td>
+                </tr>`;
+            });
+        }
+        html += `</tbody></table>`;
+        document.getElementById('tableContainer').innerHTML = html;
+    }
+</script>
+
+</body>
+</html>

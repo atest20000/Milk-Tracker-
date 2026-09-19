@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Milk Delivery Tracker</title>
+    <!-- Include html2pdf library for direct mobile file download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --primary-color: #4f46e5;
@@ -95,14 +97,10 @@
         .edit-btn { background: #3b82f6; margin-right: 4px; }
         .delete-btn { background: #ef4444; }
         
-        .export-buttons-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
+        .btn-pdf-action { 
+            background: #d97706; 
+            margin-top: 15px; 
         }
-        .btn-excel { background: #16a34a; }
-        .btn-pdf-action { background: #d97706; }
 
         /* MODAL POPUP STYLING */
         .modal-overlay {
@@ -147,14 +145,9 @@
             color: #dc2626;
             margin-top: 5px;
         }
-
-        /* PRINT STYLES */
-        @media print {
-            body * { visibility: hidden; }
-            #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
-            .no-print { display: none !important; }
-        }
+        
+        /* Utility class to hide action buttons inside the PDF export payload */
+        .hide-in-pdf { display: inline-block; }
     </style>
 </head>
 <body>
@@ -167,9 +160,9 @@
         Total to Pay: ₹0.00
     </div>
 
-    <div class="rate-badge no-print">Default Rate: ₹48 per Liter | Default Qty: 1.5L</div>
+    <div class="rate-badge">Default Rate: ₹48 per Liter | Default Qty: 1.5L</div>
 
-    <div class="no-print">
+    <div>
         <h3>Add or Update Entry</h3>
         <div class="form-group">
             <label for="entryDate">Date:</label>
@@ -190,47 +183,46 @@
         <button class="btn-primary" onclick="saveEntry()">Save Entry</button>
     </div>
 
-    <hr class="no-print">
+    <hr>
 
-    <!-- PRINT & REPORT AREA -->
-    <div id="printArea">
-        <h3>Milk Delivery Report</h3>
-        <div id="reportSummaryBox" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; font-size: 15px; font-weight: bold; color: #166534;">
-            Total Milk: 0.0 Liters | Total to Pay: ₹0.00
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+        <div>
+            <label for="startDate">From:</label>
+            <input type="date" id="startDate" onchange="loadReport()">
         </div>
-
-        <div class="no-print" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
-            <div>
-                <label for="startDate">From:</label>
-                <input type="date" id="startDate" onchange="loadReport()">
-            </div>
-            <div>
-                <label for="endDate">To:</label>
-                <input type="date" id="endDate" onchange="loadReport()">
-            </div>
+        <div>
+            <label for="endDate">To:</label>
+            <input type="date" id="endDate" onchange="loadReport()">
         </div>
-
-        <div id="tableContainer"></div>
     </div>
 
-    <div class="export-buttons-grid no-print">
-        <button class="btn-primary btn-excel" onclick="openExportModal('excel')">Export Excel (CSV)</button>
-        <button class="btn-primary btn-pdf-action" onclick="openExportModal('pdf')">Export PDF</button>
+    <div id="tableContainer"></div>
+
+    <button class="btn-primary btn-pdf-action" onclick="openExportModal()">Export PDF</button>
+</div>
+
+<!-- HIDDEN DEDICATED CONTAINER STRICTLY FOR PDF GENERATION CONTENT -->
+<div id="pdfExportContainer" style="display:none; background:#ffffff; padding:20px; font-family:sans-serif;">
+    <h2 style="text-align:center; color:#4f46e5; margin-bottom:5px;">Milk Delivery Report</h2>
+    <div id="pdfModalRangeLabel" style="text-align:center; font-size:13px; color:#6b7280; margin-bottom:15px;"></div>
+    <div id="pdfReportSummaryBox" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; font-size: 15px; font-weight: bold; color: #166534;">
+        Total Milk: 0.0 Liters | Total to Pay: ₹0.00
     </div>
+    <div id="pdfTableContainer"></div>
 </div>
 
 <!-- RANGE SELECTION MODAL POPUP -->
 <div id="exportModal" class="modal-overlay">
     <div class="modal-content">
-        <h3 id="modalTitle" style="text-align:center; margin-bottom:15px; color:#1f2937;">Select Export Range</h3>
+        <h3 style="text-align:center; margin-bottom:15px; color:#1f2937;">Select PDF Export Range</h3>
         <button class="modal-btn" onclick="applyRangePreset('all')">All Time Data</button>
         <button class="modal-btn" onclick="applyRangePreset('month')">Last 1 Month</button>
         <button class="modal-btn" onclick="applyRangePreset('year')">Last 1 Year</button>
         
         <div style="border-top: 1px solid #e5e7eb; margin: 15px 0; padding-top: 10px;">
             <label style="font-size:13px; margin-bottom:4px;">Custom Date Range:</label>
-            <input type="date" id="modalStartDate" style="margin-bottom:8px; padding:8px; font-size:14px;">
-            <input type="date" id="modalEndDate" style="margin-bottom:10px; padding:8px; font-size:14px;">
+            <input type="date" id="modalStartDate" style="margin-bottom:8px; padding:8px; font-size:14px; width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px;">
+            <input type="date" id="modalEndDate" style="margin-bottom:10px; padding:8px; font-size:14px; width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px;">
             <button class="modal-btn modal-btn-primary" onclick="applyCustomRange()">Export Custom Range</button>
         </div>
         <button class="modal-btn modal-btn-cancel" onclick="closeExportModal()">Cancel</button>
@@ -241,7 +233,6 @@
     const PRICE_PER_LITER = 48;
     const DEFAULT_QTY = 1.5;
     let selectedQty = null;
-    let activeExportType = 'pdf';
 
     window.onload = function() {
         const today = new Date();
@@ -364,11 +355,9 @@
             totalAmount += parseFloat(e.total);
         });
 
-        const summaryHTML = `Total Milk: ${totalLiters.toFixed(1)} Liters | Total to Pay: ₹${totalAmount.toFixed(2)}`;
         document.getElementById('topSummaryContainer').innerHTML = `Total Milk: ${totalLiters.toFixed(1)} Liters<br>Total to Pay: ₹${totalAmount.toFixed(2)}`;
-        document.getElementById('reportSummaryBox').innerHTML = summaryHTML;
 
-        let html = `<table><thead><tr><th>Date</th><th>Qty</th><th>Amount</th><th class="no-print">Action</th></tr></thead><tbody>`;
+        let html = `<table><thead><tr><th>Date</th><th>Qty</th><th>Amount</th><th>Action</th></tr></thead><tbody>`;
         if (filtered.length === 0) {
             html += `<tr><td colspan="4">No entries found for this range.</td></tr>`;
         } else {
@@ -377,7 +366,7 @@
                     <td>${e.date}</td>
                     <td>${e.qty}L</td>
                     <td>₹${e.total}</td>
-                    <td class="no-print">
+                    <td>
                         <button class="action-btn edit-btn" onclick="editEntry('${e.date}', ${e.qty})">Edit</button>
                         <button class="action-btn delete-btn" onclick="deleteEntry('${e.date}')">X</button>
                     </td>
@@ -388,15 +377,10 @@
         document.getElementById('tableContainer').innerHTML = html;
     }
 
-    /* MODAL FILTER FUNCTIONS */
-    function openExportModal(type) {
-        activeExportType = type;
-        document.getElementById('modalTitle').innerText = type === 'pdf' ? 'Select PDF Export Range' : 'Select Excel Export Range';
-        
-        // Default modal custom date pickers to current filter inputs
+    /* MODAL FILTER & PDF GENERATION FUNCTIONS */
+    function openExportModal() {
         document.getElementById('modalStartDate').value = document.getElementById('startDate').value;
         document.getElementById('modalEndDate').value = document.getElementById('endDate').value;
-        
         document.getElementById('exportModal').style.display = 'flex';
     }
 
@@ -425,7 +409,7 @@
         document.getElementById('endDate').value = end;
         loadReport();
         closeExportModal();
-        triggerAction();
+        generatePDFDownload(start, end);
     }
 
     function applyCustomRange() {
@@ -437,33 +421,54 @@
         document.getElementById('endDate').value = e;
         loadReport();
         closeExportModal();
-        triggerAction();
+        generatePDFDownload(s, e);
     }
 
-    function triggerAction() {
-        if (activeExportType === 'pdf') {
-            window.print();
-        } else {
-            exportToCSV();
-        }
-    }
+    function generatePDFDownload(startDate, endDate) {
+        const entries = getEntries();
+        const filtered = entries.filter(e => (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate));
 
-    function exportToCSV() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const entries = getEntries().filter(e => (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate));
-
-        let csv = 'Date,Quantity (L),Amount (INR)\n';
-        entries.forEach(e => {
-            csv += `${e.date},${e.qty},${e.total}\n`;
+        let totalLiters = 0, totalAmount = 0;
+        filtered.forEach(e => {
+            totalLiters += parseFloat(e.qty);
+            totalAmount += parseFloat(e.total);
         });
 
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'Milk_Delivery_Report.csv';
-        a.click();
+        // Populate hidden PDF container cleanly without action columns
+        document.getElementById('pdfModalRangeLabel').innerText = `Period: ${startDate || 'Beginning'} to ${endDate || 'Present'}`;
+        document.getElementById('pdfReportSummaryBox').innerText = `Total Milk: ${totalLiters.toFixed(1)} Liters | Total to Pay: ₹${totalAmount.toFixed(2)}`;
+
+        let pdfTableHTML = `<table style="width:100%; border-collapse:collapse; font-size:14px;"><thead><tr><th style="border:1px solid #d1d5db; padding:10px; background:#4f46e5; color:white;">Date</th><th style="border:1px solid #d1d5db; padding:10px; background:#4f46e5; color:white;">Qty</th><th style="border:1px solid #d1d5db; padding:10px; background:#4f46e5; color:white;">Amount</th></tr></thead><tbody>`;
+        
+        if (filtered.length === 0) {
+            pdfTableHTML += `<tr><td colspan="3" style="border:1px solid #d1d5db; padding:10px; text-align:center;">No entries found for this range.</td></tr>`;
+        } else {
+            filtered.forEach(e => {
+                pdfTableHTML += `<tr>
+                    <td style="border:1px solid #d1d5db; padding:10px; text-align:center;">${e.date}</td>
+                    <td style="border:1px solid #d1d5db; padding:10px; text-align:center;">${e.qty}L</td>
+                    <td style="border:1px solid #d1d5db; padding:10px; text-align:center;">₹${e.total}</td>
+                </tr>`;
+            });
+        }
+        pdfTableHTML += `</tbody></table>`;
+        document.getElementById('pdfTableContainer').innerHTML = pdfTableHTML;
+
+        // Trigger direct pdf download via html2pdf library
+        const element = document.getElementById('pdfExportContainer');
+        element.style.display = 'block';
+
+        const opt = {
+            margin:       0.3,
+            filename:     'Milk_Delivery_Report.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().from(element).set(opt).save().then(() => {
+            element.style.display = 'none'; // Hide container back after download triggers
+        });
     }
 </script>
 

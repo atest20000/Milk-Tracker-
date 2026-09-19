@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Milk Delivery Tracker</title>
     
-    <!-- Direct Vector PDF Generation Libraries -->
+    <!-- Direct Vector PDF Generation Libraries (Guarantees Non-Blank Direct Downloads) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
 
@@ -209,7 +209,7 @@
             font-size: 14px;
         }
 
-        /* Modal Styling */
+        /* Modal Overlay Styling */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -263,7 +263,7 @@
         <p>Manage Daily Deliveries & Bills</p>
     </div>
 
-    <!-- Configuration Card (Change Rate Here) -->
+    <!-- Editable Milk Rate Configuration Card -->
     <div class="card" style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
         <div>
             <span style="font-size: 12px; color: var(--ios-secondary-text); font-weight: 600; text-transform: uppercase;">Milk Rate (₹/Liter)</span>
@@ -284,10 +284,10 @@
             <div class="form-group">
                 <label>Quantity (Liters)</label>
                 <div class="quick-buttons">
-                    <button type="button" class="btn-qty" onclick="setQuantity(0)">0 L</button>
-                    <button type="button" class="btn-qty" onclick="setQuantity(1)">1 L</button>
-                    <button type="button" class="btn-qty active" onclick="setQuantity(1.5)">1.5 L</button>
-                    <button type="button" class="btn-qty" onclick="setQuantity(2)">2 L</button>
+                    <button type="button" class="btn-qty" onclick="setQuantity(0, event)">0 L</button>
+                    <button type="button" class="btn-qty" onclick="setQuantity(1, event)">1 L</button>
+                    <button type="button" class="btn-qty active" onclick="setQuantity(1.5, event)">1.5 L</button>
+                    <button type="button" class="btn-qty" onclick="setQuantity(2, event)">2 L</button>
                 </div>
                 <input type="number" id="quantity" step="0.1" min="0" placeholder="Custom liters..." required>
             </div>
@@ -365,7 +365,7 @@
         }
 
         setTodayDate();
-        document.getElementById('quantity').value = 1.5; // default qty
+        document.getElementById('quantity').value = 1.5;
 
         let records = JSON.parse(localStorage.getItem('milk_records')) || [];
 
@@ -378,10 +378,12 @@
             }
         }
 
-        function setQuantity(val) {
+        function setQuantity(val, event) {
             document.getElementById('quantity').value = val;
             document.querySelectorAll('.btn-qty').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
         }
 
         function saveAndRender() {
@@ -396,7 +398,6 @@
             const rate = currentRate;
             const total = quantity * rate;
 
-            // Check if entry for date already exists, update if it does, else add new
             const existingIndex = records.findIndex(r => r.date === date);
             if (existingIndex >= 0) {
                 records[existingIndex].quantity = quantity;
@@ -412,7 +413,6 @@
                 });
             }
 
-            // Sort records by date descending
             records.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             saveAndRender();
@@ -481,7 +481,7 @@
             document.getElementById('pdfModal').style.display = 'none';
         }
 
-        // Direct Vector PDF Generation (Guaranteed non-blank output)
+        // Direct Vector PDF Generation (Guaranteed non-blank, instant download)
         function generatePdf(filterType) {
             let filtered = [...records];
             const now = new Date();
@@ -573,4 +573,4 @@
                 csvContent += `${r.date},${r.quantity},${rRate},${rTotal}\n`;
             });
             const encodedUri = encodeURI(csvContent);
-            const li
+            cons
